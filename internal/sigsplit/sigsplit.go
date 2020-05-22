@@ -2,7 +2,6 @@ package sigsplit
 
 import (
 	"encoding/xml"
-	"fmt"
 	"io"
 
 	"github.com/ucarion/c14n"
@@ -117,12 +116,10 @@ func SplitSignature(r c14n.RawTokenReader) ([]byte, []byte, error) {
 			stack.Pop()
 
 			if stack.Len() == signatureDepth && inSignature {
-				fmt.Println("exit signature")
 				inSignature = false
 			}
 
 			if stack.Len() == signedInfoDepth && inSignedInfo {
-				fmt.Println("exit signed info")
 				inSignedInfo = false
 			}
 

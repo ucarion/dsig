@@ -1,6 +1,7 @@
 package dsig_test
 
 import (
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"encoding/xml"
@@ -110,6 +111,22 @@ A70UwPLAvWk5vX1IMpaEFjBd3LqWLeSmbKZ03zr1jnA=
 	cert, err := x509.ParseCertificate(block.Bytes)
 	assert.NoError(t, err)
 
+	blockEC, _ := pem.Decode([]byte(`-----BEGIN CERTIFICATE-----
+MIIB0TCCAXYCCQDW+s9OdMppmzAKBggqhkjOPQQDAjBwMQswCQYDVQQGEwJVUzEP
+MA0GA1UECAwGT3JlZ29uMREwDwYDVQQHDAhQb3J0bGFuZDEVMBMGA1UECgwMQ29t
+cGFueSBOYW1lMQwwCgYDVQQLDANPcmcxGDAWBgNVBAMMD3d3dy5leGFtcGxlLmNv
+bTAeFw0yMDA1MjIwMTIzMzNaFw0yMTA1MjIwMTIzMzNaMHAxCzAJBgNVBAYTAlVT
+MQ8wDQYDVQQIDAZPcmVnb24xETAPBgNVBAcMCFBvcnRsYW5kMRUwEwYDVQQKDAxD
+b21wYW55IE5hbWUxDDAKBgNVBAsMA09yZzEYMBYGA1UEAwwPd3d3LmV4YW1wbGUu
+Y29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEBEHpQCB2XIoK1HNKr47JCF66
+ysNNXOsauFO+6OLus4tgcwCr61D/I7tTED7+9If2TgDZpvx/IA2qzaSVa6EJbjAK
+BggqhkjOPQQDAgNJADBGAiEAh1th49i2qBgQtLFbuoriHLRWabHWpBqhhFg+RcBs
+diwCIQC/JKDqOZLQ3+PrWMHO+fh3uU8cj/cPRlsUkE3wjaM4lA==
+-----END CERTIFICATE-----`))
+
+	certEC, err := x509.ParseCertificate(blockEC.Bytes)
+	assert.NoError(t, err)
+
 	signatureFormat := strings.ReplaceAll(`<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
 <ds:SignedInfo>
 <ds:CanonicalizationMethod Algorithm="%s"></ds:CanonicalizationMethod>
@@ -133,6 +150,7 @@ A70UwPLAvWk5vX1IMpaEFjBd3LqWLeSmbKZ03zr1jnA=
 	}
 
 	type testCase struct {
+		Cert            *x509.Certificate
 		PayloadFormat   string
 		C14NMethod      string
 		DigestMethod    string
@@ -144,6 +162,7 @@ A70UwPLAvWk5vX1IMpaEFjBd3LqWLeSmbKZ03zr1jnA=
 
 	testCases := map[string]testCase{
 		"happy sha1 sha1": testCase{
+			Cert:          cert,
 			PayloadFormat: `<root>%s<foo>xxx</foo></root>`,
 			C14NMethod:    dsig.CanonicalizationMethodAlgorithmExclusive,
 			DigestMethod:  dsig.DigestMethodAlgorithmSHA1,
@@ -157,6 +176,7 @@ A70UwPLAvWk5vX1IMpaEFjBd3LqWLeSmbKZ03zr1jnA=
 			Err:            nil,
 		},
 		"happy sha1 sha256": testCase{
+			Cert:          cert,
 			PayloadFormat: `<root>%s<foo>xxx</foo></root>`,
 			C14NMethod:    dsig.CanonicalizationMethodAlgorithmExclusive,
 			DigestMethod:  dsig.DigestMethodAlgorithmSHA1,
@@ -170,6 +190,7 @@ A70UwPLAvWk5vX1IMpaEFjBd3LqWLeSmbKZ03zr1jnA=
 			Err:            nil,
 		},
 		"happy sha256 sha1": testCase{
+			Cert:          cert,
 			PayloadFormat: `<root>%s<foo>xxx</foo></root>`,
 			C14NMethod:    dsig.CanonicalizationMethodAlgorithmExclusive,
 			DigestMethod:  dsig.DigestMethodAlgorithmSHA256,
@@ -183,6 +204,7 @@ A70UwPLAvWk5vX1IMpaEFjBd3LqWLeSmbKZ03zr1jnA=
 			Err:            nil,
 		},
 		"happy sha256 sha256": testCase{
+			Cert:          cert,
 			PayloadFormat: `<root>%s<foo>xxx</foo></root>`,
 			C14NMethod:    dsig.CanonicalizationMethodAlgorithmExclusive,
 			DigestMethod:  dsig.DigestMethodAlgorithmSHA256,
@@ -195,6 +217,63 @@ A70UwPLAvWk5vX1IMpaEFjBd3LqWLeSmbKZ03zr1jnA=
 			SignatureValue: "OYOiO9eioy1H873jemKmgaJsJ9tceGmCxcdU/o37pfdssYyb7dbp/AQtRSJK4TcZkS4PZoDxdbDgoL+TijRFK4uCVlrcP2njXaaaqbR9DevRSenRy+jwvb8uHc3x8t5u2imeWHxwO6fVveAchl0Hq8Ha0CdQ5kL6cUMAvKdDYjK6nqC1E8u/kfxrIdQY7bXxDNs7T25N4LmvAiWVUbbYZNWCUdVfrjLNc7xDfoJussSecfMM0cYwMITmFmzAOvFu/ovXXguQBGrBJ2FpkAHuqQZtLyTHiHy4AAcTC0MbMYShenGFn0xVl7y/7JPeJ8OS5OOZLrUbauh5zfSLt0WJt8qhKEy1RwFx3xvW+819gyo/W8sPFDRELl2N5oCo7AG2Mb2JBwrRjl60TxiopUm+RodIrirdYx25kSaeebP8ButBUdgMxPuOqNn+wNwagVfAJlaQv2gaunm9CQ470EWu45RoKl8rlkjTKWaQ+0ZoD2Z4K4hgwZHu3DW2f7k/PAL+ZmlyuQymAUBWJ/H2FkqL0pT5DwTJfYk6uLKw1ImPaeoIoynfcDAl6UQae13B4LTAIR8h9h0N0NU6F5tatUcGAg4gjlMogkDhbzISyznLwzgQngTIi3NTagIbogCMUK80d6mOfDc5dUPd/lkCe2BdsP/A+RR7wlSWBJAdc4c2sjQ=",
 			Err:            nil,
 		},
+		"unsupported digest algorithm": testCase{
+			PayloadFormat:   `<root>%s<foo>xxx</foo></root>`,
+			C14NMethod:      dsig.CanonicalizationMethodAlgorithmExclusive,
+			DigestMethod:    "nonsense",
+			DigestValue:     "",
+			SignatureMethod: dsig.SignatureMethodAlgorithmSHA1,
+			SignatureValue:  "",
+			Err:             dsig.ErrBadDigestAlgorithm,
+		},
+		"unsupported signature algorithm": testCase{
+			Cert:          cert,
+			PayloadFormat: `<root>%s<foo>xxx</foo></root>`,
+			C14NMethod:    dsig.CanonicalizationMethodAlgorithmExclusive,
+			DigestMethod:  dsig.DigestMethodAlgorithmSHA1,
+
+			// echo -n '<root><foo>xxx</foo></root>' | sha1sum | cut -d' ' -f1 | xxd -r -p | base64
+			DigestValue:     "7kvXOcbFqnvhPOTWR6rVaMjjh6o=",
+			SignatureMethod: "nonsense",
+			SignatureValue:  "",
+			Err:             dsig.ErrBadSignatureAlgorithm,
+		},
+		"bad digest": testCase{
+			Cert:            cert,
+			PayloadFormat:   `<root>%s<foo>xxx</foo></root>`,
+			C14NMethod:      dsig.CanonicalizationMethodAlgorithmExclusive,
+			DigestMethod:    dsig.DigestMethodAlgorithmSHA1,
+			DigestValue:     "",
+			SignatureMethod: dsig.SignatureMethodAlgorithmSHA1,
+			SignatureValue:  "",
+			Err:             dsig.ErrBadDigest,
+		},
+		"bad signature": testCase{
+			Cert:          cert,
+			PayloadFormat: `<root>%s<foo>xxx</foo></root>`,
+			C14NMethod:    dsig.CanonicalizationMethodAlgorithmExclusive,
+			DigestMethod:  dsig.DigestMethodAlgorithmSHA1,
+
+			// echo -n '<root><foo>xxx</foo></root>' | sha1sum | cut -d' ' -f1 | xxd -r -p | base64
+			DigestValue:     "7kvXOcbFqnvhPOTWR6rVaMjjh6o=",
+			SignatureMethod: dsig.SignatureMethodAlgorithmSHA1,
+			SignatureValue:  "",
+			Err:             rsa.ErrVerification,
+		},
+		"non-rsa x509 cert": testCase{
+			Cert:          certEC,
+			PayloadFormat: `<root>%s<foo>xxx</foo></root>`,
+			C14NMethod:    dsig.CanonicalizationMethodAlgorithmExclusive,
+			DigestMethod:  dsig.DigestMethodAlgorithmSHA1,
+
+			// echo -n '<root><foo>xxx</foo></root>' | sha1sum | cut -d' ' -f1 | xxd -r -p | base64
+			DigestValue:     "7kvXOcbFqnvhPOTWR6rVaMjjh6o=",
+			SignatureMethod: dsig.SignatureMethodAlgorithmSHA1,
+
+			// echo -n 'echo -n '<ds:SignedInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">...</ds:SignedInfo>' | openssl dgst -sha1 -sign key.pem | base64
+			SignatureValue: "lNEz9jdCMk5RZI5iIwnPhJ1Xfi18ezpU5CjIHCFLdgJPuv5e9xTwM2HQUkgzayZDOnUi/Gvw/NxU8+gigt6ORp26a3t136uAYFO151OgRarb3Qm+xsvsRCNeDV9d3Lg60YZXRtgOpqd/X2/HWTnwvLu4DphS/7/qVCEVKxqSsnuyUnnXHgz5w0U4QpBsBGe8KkhrobE4xmxVxwHokISObrl0/4OT8XLezrp8N5Q4HlSQM1et6I/WLggyXQAN31qyd03EwejBqex1xiR/b4mhnfmQVaFMfHHV4kRKXoYxXsBa6kdlVIOC7GvaIQYT0MDFCxMqNbqJxwmFqCzkG4jobg91eStWFzaDS7XmevqxVveHiADkLULisXnv20HQbehigib9xeMUjruzd+86mB2i863PU4DdXZ0qEcIBI6QyrVOyCI8fFsC7+qPFjtt7juZQ1BT1p6MNcKgFn/0Du+LB9RLTUJEwZsFqDGQ6405LdNIFiqbL/8Tbk6Q2IyTkp3AVtwn/aUUkVtoEMMf+tDfp3Ujtqo+qgXI/AxmwPX2JbvhuGdDR4bhIWCL7I1yyV0uGafV1jJyfle2hImIrMW5DzKtb4FlnOfEUQxYJyZnM8i6dikAOqmhj7hpuS7+vxyDpglZ6r2XoPYjaUMIl5gdkhHWCToCsqjUbwhv4H3/ji14=",
+			Err:            dsig.ErrPublicKeyNotRSA,
+		},
 	}
 
 	for name, tt := range testCases {
@@ -205,7 +284,7 @@ A70UwPLAvWk5vX1IMpaEFjBd3LqWLeSmbKZ03zr1jnA=
 			assert.NoError(t, xml.Unmarshal([]byte(payloadString), &payload))
 
 			decoder := xml.NewDecoder(strings.NewReader(payloadString))
-			assert.Equal(t, tt.Err, payload.Signature.Verify(cert, decoder))
+			assert.Equal(t, tt.Err, payload.Signature.Verify(tt.Cert, decoder))
 		})
 	}
 }
