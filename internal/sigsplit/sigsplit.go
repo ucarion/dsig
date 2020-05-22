@@ -161,16 +161,14 @@ func SplitSignature(r c14n.RawTokenReader) ([]byte, []byte, error) {
 		}
 	}
 
-	fmt.Printf("%#v\n%#v\n", outer, inner)
-
 	outerReader := bufRawTokenReader(outer)
-	outerBytes, err := c14n.Canonicalize("", &outerReader)
+	outerBytes, err := c14n.Canonicalize(&outerReader)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	innerReader := bufRawTokenReader(inner)
-	innerBytes, err := c14n.Canonicalize("", &innerReader)
+	innerBytes, err := c14n.Canonicalize(&innerReader)
 	if err != nil {
 		return nil, nil, err
 	}

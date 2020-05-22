@@ -1,13 +1,14 @@
 package dsig
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/rsa"
-	"crypto/subtle"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/xml"
 	"errors"
+	"fmt"
 
 	"github.com/ucarion/c14n"
 	"github.com/ucarion/dsig/internal/sigsplit"
@@ -32,9 +33,17 @@ func (s *Signature) Verify(cert *x509.Certificate, r c14n.RawTokenReader) error 
 
 	h := s.SignedInfo.Reference.DigestMethod.hash().New()
 	h.Write(toDigest)
-	if subtle.ConstantTimeCompare(expectedDigest, h.Sum(nil)) != 0 {
+
+	// This does not need to be a subtle.ConstantTimeCompare, because the digest
+	// is not being used as an HMAC. There is no secret key here.
+	//
+	// Instead, verifying the digest here can act as a hint to the caller that the
+	// embedded signature does not correspond to the data it's embedded in.
+	if !bytes.Equal(expectedDigest, h.Sum(nil)) {
 		return errors.New("digest not correct")
 	}
+
+	fmt.Println("toVerify", string(toVerify))
 
 	publicKey, ok := cert.PublicKey.(*rsa.PublicKey)
 	if !ok {
@@ -68,16 +77,21 @@ type CanonicalizationMethod struct {
 	Algorithm string   `xml:"Algorithm,attr"`
 }
 
+var CanonicalizationMethodAlgorithmExclusive = "http://www.w3.org/2001/10/xml-exc-c14n#"
+
 type SignatureMethod struct {
 	XMLName   xml.Name `xml:"http://www.w3.org/2000/09/xmldsig# SignatureMethod"`
 	Algorithm string   `xml:"Algorithm,attr"`
 }
 
+var SignatureMethodAlgorithmSHA1 = "http://www.w3.org/2000/09/xmldsig#rsa-sha1"
+var SignatureMethodAlgorithmSHA256 = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
+
 func (s *SignatureMethod) hash() crypto.Hash {
 	switch s.Algorithm {
-	case "http://www.w3.org/2000/09/xmldsig#rsa-sha1":
+	case SignatureMethodAlgorithmSHA1:
 		return crypto.SHA1
-	case "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256":
+	case SignatureMethodAlgorithmSHA256:
 		return crypto.SHA256
 	default:
 		return 0
@@ -107,11 +121,14 @@ type DigestMethod struct {
 	Algorithm string   `xml:"Algorithm,attr"`
 }
 
+var DigestMethodAlgorithmSHA1 = "http://www.w3.org/2000/09/xmldsig#sha1"
+var DigestMethodAlgorithmSHA256 = "http://www.w3.org/2001/04/xmlenc#sha256"
+
 func (d *DigestMethod) hash() crypto.Hash {
 	switch d.Algorithm {
-	case "http://www.w3.org/2000/09/xmldsig#sha1":
+	case DigestMethodAlgorithmSHA1:
 		return crypto.SHA1
-	case "http://www.w3.org/2001/04/xmlenc#sha256":
+	case DigestMethodAlgorithmSHA256:
 		return crypto.SHA256
 	default:
 		return 0
