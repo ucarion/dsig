@@ -3,9 +3,11 @@ package dsig_test
 import (
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 
@@ -273,6 +275,34 @@ diwCIQC/JKDqOZLQ3+PrWMHO+fh3uU8cj/cPRlsUkE3wjaM4lA==
 			// echo -n 'echo -n '<ds:SignedInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">...</ds:SignedInfo>' | openssl dgst -sha1 -sign key.pem | base64
 			SignatureValue: "lNEz9jdCMk5RZI5iIwnPhJ1Xfi18ezpU5CjIHCFLdgJPuv5e9xTwM2HQUkgzayZDOnUi/Gvw/NxU8+gigt6ORp26a3t136uAYFO151OgRarb3Qm+xsvsRCNeDV9d3Lg60YZXRtgOpqd/X2/HWTnwvLu4DphS/7/qVCEVKxqSsnuyUnnXHgz5w0U4QpBsBGe8KkhrobE4xmxVxwHokISObrl0/4OT8XLezrp8N5Q4HlSQM1et6I/WLggyXQAN31qyd03EwejBqex1xiR/b4mhnfmQVaFMfHHV4kRKXoYxXsBa6kdlVIOC7GvaIQYT0MDFCxMqNbqJxwmFqCzkG4jobg91eStWFzaDS7XmevqxVveHiADkLULisXnv20HQbehigib9xeMUjruzd+86mB2i863PU4DdXZ0qEcIBI6QyrVOyCI8fFsC7+qPFjtt7juZQ1BT1p6MNcKgFn/0Du+LB9RLTUJEwZsFqDGQ6405LdNIFiqbL/8Tbk6Q2IyTkp3AVtwn/aUUkVtoEMMf+tDfp3Ujtqo+qgXI/AxmwPX2JbvhuGdDR4bhIWCL7I1yyV0uGafV1jJyfle2hImIrMW5DzKtb4FlnOfEUQxYJyZnM8i6dikAOqmhj7hpuS7+vxyDpglZ6r2XoPYjaUMIl5gdkhHWCToCsqjUbwhv4H3/ji14=",
 			Err:            dsig.ErrPublicKeyNotRSA,
+		},
+		"digest not base64": testCase{
+			Cert:            cert,
+			PayloadFormat:   `<root>%s<foo>xxx</foo></root>`,
+			C14NMethod:      dsig.CanonicalizationMethodAlgorithmExclusive,
+			DigestMethod:    dsig.DigestMethodAlgorithmSHA1,
+			DigestValue:     "NOT BASE64",
+			SignatureMethod: dsig.SignatureMethodAlgorithmSHA1,
+			SignatureValue:  "",
+			Err:             base64.CorruptInputError(3),
+		},
+		"signature not base64": testCase{
+			Cert:          cert,
+			PayloadFormat: `<root>%s<foo>xxx</foo></root>`,
+			C14NMethod:    dsig.CanonicalizationMethodAlgorithmExclusive,
+			DigestMethod:  dsig.DigestMethodAlgorithmSHA1,
+
+			// echo -n '<root><foo>xxx</foo></root>' | sha1sum | cut -d' ' -f1 | xxd -r -p | base64
+			DigestValue:     "7kvXOcbFqnvhPOTWR6rVaMjjh6o=",
+			SignatureMethod: dsig.SignatureMethodAlgorithmSHA1,
+
+			SignatureValue: "NOT BASE64",
+			Err:            base64.CorruptInputError(3),
+		},
+		"no signature": testCase{
+			Cert:          cert,
+			PayloadFormat: `<root><!-- %s --><foo>xxx</foo></root>`,
+			Err:           io.ErrUnexpectedEOF,
 		},
 	}
 
