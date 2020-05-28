@@ -4,5 +4,5 @@ go 1.14
 
 require (
 	github.com/stretchr/testify v1.5.1
-	github.com/ucarion/c14n v0.0.0-20200526002334-ae972620b16e
+	github.com/ucarion/c14n v0.0.0-20200528012634-e7f5ae127f40
 )
