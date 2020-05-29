@@ -1,7 +1,7 @@
 # dsig
 
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/mod/github.com/ucarion/dsig?tab=overview)
- [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/ucarion/dsig/tests?label=tests&logo=github&style=flat-square)](https://github.com/ucarion/dsig/actions)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/ucarion/dsig/tests?label=tests&logo=github&style=flat-square)](https://github.com/ucarion/dsig/actions)
 
 This package is a Golang implementation of [XML Digital Signature][w3], or
 "XML-DSig". In particular, it implements a restricted subset of the
