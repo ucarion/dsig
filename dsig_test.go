@@ -15,6 +15,138 @@ import (
 	"github.com/ucarion/dsig"
 )
 
+func ExampleSignature() {
+	type Foo struct {
+		FavoriteNumber int            `xml:"favoriteNumber,attr"`
+		FavoriteQuote  string         `xml:"favoriteQuote"`
+		Signature      dsig.Signature `xml:"Signature"`
+	}
+
+	input := `
+		<Foo favoriteNumber="42">
+			<favoriteQuote>hello</favoriteQuote>
+			<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+				<ds:SignedInfo>
+					<ds:Reference>
+						<ds:DigestValue>xxx</ds:DigestValue>
+					</ds:Reference>
+				</ds:SignedInfo>
+				<ds:SignatureValue>yyy</ds:SignatureValue>
+			</ds:Signature>
+		</Foo>
+	`
+
+	var foo Foo
+	err := xml.Unmarshal([]byte(input), &foo)
+	fmt.Println(foo.FavoriteNumber, foo.FavoriteQuote, foo.Signature.SignedInfo.Reference.DigestValue, foo.Signature.SignatureValue, err)
+	// Output:
+	// 42 hello xxx yyy <nil>
+}
+
+func ExampleSignature_Verify() {
+	// This example shows how you manually construct a signature that this package
+	// will successfully verify.
+	//
+	// First, you'll need to create a x509 certificate and its corresponding RSA
+	// private key. You can do that by running:
+
+	// openssl req -x509 -newkey rsa:1024 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/C=US/ST=Oregon/L=Portland/O=Company Name/OU=Org/CN=www.example.com"
+
+	// Note: don't use a key like this in production. 1024 bits is usually
+	// insufficient for RSA in production.
+	//
+	// Running that command will generate a file like this:
+	block, _ := pem.Decode([]byte(`-----BEGIN CERTIFICATE-----
+MIICVzCCAcACCQC9lei8Ir3KDzANBgkqhkiG9w0BAQsFADBwMQswCQYDVQQGEwJV
+UzEPMA0GA1UECAwGT3JlZ29uMREwDwYDVQQHDAhQb3J0bGFuZDEVMBMGA1UECgwM
+Q29tcGFueSBOYW1lMQwwCgYDVQQLDANPcmcxGDAWBgNVBAMMD3d3dy5leGFtcGxl
+LmNvbTAeFw0yMDA1MjgxNzUzNTJaFw0yMTA1MjgxNzUzNTJaMHAxCzAJBgNVBAYT
+AlVTMQ8wDQYDVQQIDAZPcmVnb24xETAPBgNVBAcMCFBvcnRsYW5kMRUwEwYDVQQK
+DAxDb21wYW55IE5hbWUxDDAKBgNVBAsMA09yZzEYMBYGA1UEAwwPd3d3LmV4YW1w
+bGUuY29tMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDAqmyYL/bNqAL7uHFx
+lHT2Ullmh0UvMb1mJrtTVb/j+k+nKNklbdbz/mSOdc7OJ8kwu9xNcKvDADr8acir
+74p8Tp9hYEOR8p2XBcFiB7x5g76Vdm6NM4g3Ib5utXBRd13YSQajD6ynJYprrTBn
+gGnXzdvZ6ZhX3QeJebO9m9u7WQIDAQABMA0GCSqGSIb3DQEBCwUAA4GBAL8vaXlm
+1dd8U9UCrnt6X0MHvd5l5RRWqvXcV7FvjBqs6U9TP+soCKAzQSpJh4WpY1qaMlgc
+FVaTFT9FFMoqYHTn4yj/C6GS7tcyXEStKvr7UA6mH4yfepwndoc6/KAuCph1ucsb
+VuPh47/DnXFpm4ZKNsojqBwUjM9/EkP0UGGK
+-----END CERTIFICATE-----`))
+
+	// It will also generate an RSA private key in a file called "key.pem". For
+	// this example, that file contained:
+
+	// -----BEGIN PRIVATE KEY-----
+	// MIICeQIBADANBgkqhkiG9w0BAQEFAASCAmMwggJfAgEAAoGBAMCqbJgv9s2oAvu4
+	// cXGUdPZSWWaHRS8xvWYmu1NVv+P6T6co2SVt1vP+ZI51zs4nyTC73E1wq8MAOvxp
+	// yKvvinxOn2FgQ5HynZcFwWIHvHmDvpV2bo0ziDchvm61cFF3XdhJBqMPrKclimut
+	// MGeAadfN29npmFfdB4l5s72b27tZAgMBAAECgYEAsd9lfKejisDXaEAjdAHkbdkf
+	// MnomVGjufBW8Ejbzfu2EhkY/G8ApmH+/pIp9EHVI2JZH0LL50IEw9AJRwvLW/Usn
+	// ftKh5wuTp2+0D5NSaIyaW4GuKTZvxsr+GW2ot3qACOQXAj/Lh97kn0K8czZv9u1e
+	// fJyUhFb5vRbDo2EDVJUCQQDxwWgVdEm64MKv2y+q0lOvfUolX9/lLUkvJbaskJvN
+	// /4qCKQKLfGCjRITnKLW58f29FRZa6JOD4kdYWL/CLHinAkEAzASOkDVoj+bBQZaJ
+	// l86IP2YBsR7gzc/BpBkmmgPvcbcS7TH+KcNtwAgcSD30JfdxJYpqm4xnd0zI2WUR
+	// wkir/wJBAJIdbQUahb13PvP+q+64tG+qb/fq3G2tU0A1sRTXSfPVcSd+FdWsVNQZ
+	// A6KazksWYV+4sQw86XuadbiF21BGhJ0CQQCbKLQLtLKrDkHX0dce3vH71WZgAC3U
+	// GLcaSA51f5yxDRyVzDmSJZDoRMLNpmByJ3ejp1tgpS1jK8BspVMWQRKdAkEArOjw
+	// I6a8DR91f+zxDkFne31qP6FENL+esVHkGUd61/U35pezUx1jdhDrq5Xmr42QJlw1
+	// 28GdnqzGoINvvv8JQQ==
+	// -----END PRIVATE KEY-----
+
+	// Note: don't use this private key in production. This is just an example
+	// key, and because it's shared in this example, it's now useless for
+	// real-world use.
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	fmt.Println(err)
+
+	type Foo struct {
+		FavoriteNumber int            `xml:"favoriteNumber,attr"`
+		FavoriteQuote  string         `xml:"favoriteQuote"`
+		Signature      dsig.Signature `xml:"Signature"`
+	}
+
+	// The DigestValue in this example is calculated by running:
+
+	// echo -n '<Foo favoriteNumber="42">\n\t\t\t<favoriteQuote>hello</favoriteQuote>\n\t\t\t\n\t\t</Foo>' | sha1sum | cut -d' ' -f1 | xxd -r -p | base64
+
+	// That string is the canonicalized representation of all of the data outside
+	// of the ds:Signature.
+	//
+	// The SignatureValue is calculated by running:
+
+	// echo -n '<ds:SignedInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">\n\t\t\t\t\t<ds:Reference>\n\t\t\t\t\t\t<ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"></ds:DigestMethod>\n\t\t\t\t\t\t<ds:DigestValue>TakSS5ndDNzYd32+E3GGQlZJ3j0=</ds:DigestValue>\n\t\t\t\t\t</ds:Reference>\n\t\t\t\t\t<ds:SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"></ds:SignatureMethod>\n\t\t\t\t</ds:SignedInfo>' | openssl dgst -sha1 -sign key.pem | base64
+
+	// That string is canonicalized representation of the ds:SignedInfo, including
+	// the DigestValue we just calculated.
+	input := `
+		<Foo favoriteNumber="42">
+			<favoriteQuote>hello</favoriteQuote>
+			<ds:Signature xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+				<ds:SignedInfo>
+					<ds:Reference>
+						<ds:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1" />
+						<ds:DigestValue>TakSS5ndDNzYd32+E3GGQlZJ3j0=</ds:DigestValue>
+					</ds:Reference>
+					<ds:SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1" />
+				</ds:SignedInfo>
+				<ds:SignatureValue>L4l1Qyp8kVFaZ9893/IW0bEBGBuAavssuv916PuM/e7RAR7qQ/PZ4M8Lo5WcMXV2GYLoRttTurt0I9udTs4SO4yv+JitlXdvWUllgLQNR9kMHpFwzkyv2Pw6m3j6Jdix9kVD7nh50OUcBJDJSk+WLa55TWLe++RejjPfUezPoAY=</ds:SignatureValue>
+			</ds:Signature>
+		</Foo>
+	`
+
+	var foo Foo
+	err = xml.Unmarshal([]byte(input), &foo)
+	fmt.Println(err)
+
+	decoder := xml.NewDecoder(strings.NewReader(input))
+	err = foo.Signature.Verify(cert, decoder)
+	fmt.Println(err)
+	// Output:
+	// <nil>
+	// <nil>
+	// <nil>
+}
+
 // The cert and key used in these tests were generated by running:
 //
 // openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365

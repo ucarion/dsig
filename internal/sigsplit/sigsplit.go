@@ -22,6 +22,14 @@ var signedInfoName = xml.Name{
 
 var signedInfoDepth = 2
 
+// SplitSignature takes a raw sequence of tokens, and splits them into data
+// outside of ds:Signature and data inside ds:SignedInfo.
+//
+// The "outer" data needs to be digested, and the "inner" data needs to be
+// cryptographically verified.
+//
+// This function assumes that the data has ds:Signature at the child-of-root
+// level, and ds:SignedInfo immediately inside ds:Signature.
 func SplitSignature(r c14n.RawTokenReader) ([]byte, []byte, error) {
 	outer := []xml.Token{}
 	inner := []xml.Token{}

@@ -52,8 +52,8 @@ func TestSplitSignature(t *testing.T) {
 </NestedSignature>
 </Root>`
 
-	expectedInner := `<xxx:SignedInfo xmlns="http://example.com" xmlns:xxx="http://www.w3.org/2000/09/xmldsig#">
-<IncludeMe></IncludeMe>
+	expectedInner := `<xxx:SignedInfo xmlns:xxx="http://www.w3.org/2000/09/xmldsig#">
+<IncludeMe xmlns="http://example.com"></IncludeMe>
 
 <?include-me?>
 
